@@ -2,6 +2,7 @@
  * LZ4 - Fast LZ compression algorithm
  * Copyright (C) 2011-2012, Yann Collet.
  * BSD 2-Clause License (http://www.opensource.org/licenses/bsd-license.php)
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
@@ -436,7 +437,7 @@ int lz4_compress(const unsigned char *src, size_t src_len,
 exit:
 	return ret;
 }
-EXPORT_SYMBOL(lz4_compress);
+EXPORT_SYMBOL_GPL(lz4_compress);
 
-MODULE_LICENSE("Dual BSD/GPL");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("LZ4 compressor");

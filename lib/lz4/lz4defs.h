@@ -154,4 +154,3 @@ typedef struct _U64_S { u64 v; } U64_S;
 		LZ4_WILDCOPY(s, d, e);	\
 		d = e;	\
 	} while (0)
-
