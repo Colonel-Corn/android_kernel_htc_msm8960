@@ -2646,6 +2646,7 @@ config LCD_KCAL
         default n
         help
           Enable MSM generic LCDC temperature Calibration.
+
 config USERSPACE_VOLTAGE_CONTROL
 	bool "Enable Userspace CPU Voltage Control"
 	default y
