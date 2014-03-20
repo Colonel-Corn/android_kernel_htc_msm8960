@@ -23,6 +23,7 @@ obj-$(CONFIG_CPU_FREQ_GOV_DARKNESS)	+= cpufreq_darkness.o
 obj-$(CONFIG_CPU_FREQ_GOV_LULZACTIVEW)   += cpufreq_lulzactivew.o
 obj-$(CONFIG_CPU_FREQ_GOV_SKYWALKER)	+= cpufreq_skywalker.o
 obj-$(CONFIG_CPU_FREQ_GOV_WREXY)	+= cpufreq_wrexy.o
+obj-$(CONFIG_CPU_FREQ_GOV_PEGASUSQ)	+= cpufreq_pegasusq.o
 
 # CPUfreq cross-arch helpers
 obj-$(CONFIG_CPU_FREQ_TABLE)		+= freq_table.o
