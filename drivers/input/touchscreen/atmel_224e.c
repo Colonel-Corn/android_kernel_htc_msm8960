@@ -16,7 +16,7 @@
 #include <linux/module.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
-#include <linux/earlysuspend.h>
+#include <linux/powersuspend.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
@@ -71,7 +71,7 @@ struct atmel_ts_data {
 	struct delayed_work unlock_work;
 	int (*power) (int on);
 	uint8_t unlock_attr;
-	struct early_suspend early_suspend;
+	struct power_suspend power_suspend;
 	struct info_id_t *id;
 	struct object_t *object_table;
 	uint8_t report_type;
@@ -135,9 +135,9 @@ struct atmel_ts_data {
 static struct atmel_ts_data *private_ts;
 static short htc_event_enable, disable_touch;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void atmel_ts_early_suspend(struct early_suspend *h);
-static void atmel_ts_late_resume(struct early_suspend *h);
+#ifdef CONFIG_POWERSUSPEND
+static void atmel_ts_power_suspend(struct power_suspend *h);
+static void atmel_ts_late_resume(struct power_suspend *h);
 #endif
 
 static void restore_normal_threshold(struct atmel_ts_data *ts);
@@ -2307,11 +2307,10 @@ static int atmel_224e_ts_probe(struct i2c_client *client, const struct i2c_devic
 	if (ret)
 		dev_err(&client->dev, "[TP]TOUCH_ERR: request_irq failed\n");
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING - 1;
-	ts->early_suspend.suspend = atmel_ts_early_suspend;
-	ts->early_suspend.resume = atmel_ts_late_resume;
-	register_early_suspend(&ts->early_suspend);
+#ifdef CONFIG_POWERSUSPEND
+	ts->power_suspend.suspend = atmel_ts_power_suspend;
+	ts->power_suspend.resume = atmel_ts_late_resume;
+	register_power_suspend(&ts->power_suspend);
 #endif
 
 #ifdef ATMEL_EN_SYSFS
@@ -2359,7 +2358,7 @@ static int atmel_224e_ts_remove(struct i2c_client *client)
 	atmel_touch_sysfs_deinit();
 #endif
 
-	unregister_early_suspend(&ts->early_suspend);
+	unregister_power_suspend(&ts->power_suspend);
 	free_irq(client->irq, ts);
 
 	destroy_workqueue(ts->atmel_delayed_wq);
@@ -2473,18 +2472,18 @@ static int atmel_224e_ts_resume(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void atmel_ts_early_suspend(struct early_suspend *h)
+#ifdef CONFIG_POWERSUSPEND
+static void atmel_ts_power_suspend(struct power_suspend *h)
 {
 	struct atmel_ts_data *ts;
-	ts = container_of(h, struct atmel_ts_data, early_suspend);
+	ts = container_of(h, struct atmel_ts_data, power_suspend);
 	atmel_224e_ts_suspend(ts->client, PMSG_SUSPEND);
 }
 
-static void atmel_ts_late_resume(struct early_suspend *h)
+static void atmel_ts_late_resume(struct power_suspend *h)
 {
 	struct atmel_ts_data *ts;
-	ts = container_of(h, struct atmel_ts_data, early_suspend);
+	ts = container_of(h, struct atmel_ts_data, power_suspend);
 	atmel_224e_ts_resume(ts->client);
 }
 #endif
@@ -2498,7 +2497,7 @@ static struct i2c_driver atmel_224e_ts_driver = {
 	.id_table = atml_224e_ts_i2c_id,
 	.probe = atmel_224e_ts_probe,
 	.remove = atmel_224e_ts_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_POWERSUSPEND
 	.suspend = atmel_224e_ts_suspend,
 	.resume = atmel_224e_ts_resume,
 #endif

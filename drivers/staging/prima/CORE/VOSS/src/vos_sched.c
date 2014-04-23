@@ -1240,6 +1240,120 @@ VOS_STATUS vos_watchdog_close ( v_PVOID_t pVosContext )
 
 VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
 {
+#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
+    v_CONTEXT_t pVosContext = NULL;
+    hdd_context_t *pHddCtx = NULL;
+    hdd_chip_reset_stats_t *pResetStats;
+    struct sdio_func *sdio_func_dev = NULL;
+    
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+        "%s: vos_watchdog resetting WLAN", __FUNCTION__);
+    if (gpVosWatchdogContext == NULL)
+    {
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+           "%s: Watchdog not enabled. LOGP ignored.",__FUNCTION__);
+       return VOS_STATUS_E_FAILURE;
+    }
+
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_HDD, NULL);
+    pHddCtx = (hdd_context_t *)vos_get_context(VOS_MODULE_ID_HDD, pVosContext );
+
+    hdd_reset_all_adapters(pHddCtx);
+
+    sdio_func_dev = libra_getsdio_funcdev();
+
+    if(sdio_func_dev == NULL)
+    {
+         /* Our card got removed before LOGP. Continue with reset anyways */
+         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: sdio_func_dev is NULL!",__func__);
+         return VOS_STATUS_SUCCESS;
+    }
+
+    sd_claim_host(sdio_func_dev);
+    
+    /* Disable SDIO IRQ since we are in LOGP state */
+    libra_disable_sdio_irq_capability(sdio_func_dev, 1);
+    libra_enable_sdio_irq(sdio_func_dev, 0);
+
+    sd_release_host(sdio_func_dev);
+
+    /* Take the lock here */
+    spin_lock(&gpVosWatchdogContext->wdLock);
+
+    if (gpVosWatchdogContext->resetInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+            "%s: Reset already in Progress. Ignoring signaling Watchdog",
+                                                           __FUNCTION__);
+        /* Release the lock here */
+        spin_unlock(&gpVosWatchdogContext->wdLock);
+        return VOS_STATUS_E_FAILURE;
+    } 
+    else if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+            "%s: LOGP already in Progress. Ignoring signaling Watchdog",
+                                                           __FUNCTION__);
+        /* Release the lock here */
+        spin_unlock(&gpVosWatchdogContext->wdLock);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    VOS_ASSERT(0);
+    
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_HDD, NULL);
+    pAdapter = (hdd_adapter_t *)vos_get_context(VOS_MODULE_ID_HDD,pVosContext);
+
+    /* Set the flags so that all future CMD53 and Wext commands get blocked right away */
+    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+    pHddCtx->isLogpInProgress = TRUE;
+
+    /* Release the lock here */
+    spin_unlock(&gpVosWatchdogContext->wdLock);
+
+    if (pHddCtx->isLoadUnloadInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+            "%s: Load/unload in Progress. Ignoring signaling Watchdog",
+                                                          __FUNCTION__);
+        return VOS_STATUS_E_FAILURE;    
+    }
+
+#ifdef CONFIG_POWERSUSPEND
+    if(VOS_STATUS_SUCCESS != hdd_wlan_reset_initialization())
+    {
+       /* This can fail if card got removed by SDCC during resume */
+       VOS_ASSERT(0);
+    }
+#endif
+
+    /* Update Reset Statistics */
+    pResetStats = &pHddCtx->hddChipResetStats;
+    pResetStats->totalLogpResets++;
+
+    switch (reason)
+    {
+     case VOS_CHIP_RESET_CMD53_FAILURE:
+        pResetStats->totalCMD53Failures++;
+        break;
+     case VOS_CHIP_RESET_FW_EXCEPTION:
+        pResetStats->totalFWHearbeatFailures++;
+        break;
+     case VOS_CHIP_RESET_MUTEX_READ_FAILURE:
+        pResetStats->totalMutexReadFailures++;
+        break;
+     case VOS_CHIP_RESET_MIF_EXCEPTION:
+        pResetStats->totalMIFErrorFailures++;
+        break;
+     default:
+        pResetStats->totalUnknownExceptions++;
+        break;
+    }
+
+    set_bit(WD_CHIP_RESET_EVENT_MASK, &gpVosWatchdogContext->wdEventFlag);
+    set_bit(WD_POST_EVENT_MASK, &gpVosWatchdogContext->wdEventFlag);
+    wake_up_interruptible(&gpVosWatchdogContext->wdWaitQueue);
+#endif
     return VOS_STATUS_SUCCESS;
 } /* vos_watchdog_chip_reset() */
 
@@ -1784,7 +1898,7 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     }
     /* Update Riva Reset Statistics */
     pHddCtx->hddRivaResetStats++;
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#ifdef CONFIG_POWERSUSPEND
     if(VOS_STATUS_SUCCESS != hdd_wlan_reset_initialization())
     {
        VOS_ASSERT(0);

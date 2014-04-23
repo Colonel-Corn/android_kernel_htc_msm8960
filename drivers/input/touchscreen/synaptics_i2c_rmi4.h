@@ -27,12 +27,17 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION 0x1005
 
 #include <linux/version.h>
+<<<<<<< HEAD
 
 #ifdef CONFIG_FB
 #include <linux/notifier.h>
 #include <linux/fb.h>
 #elif defined CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+=======
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+>>>>>>> a9c70c3... migrate everything to powersuspend.
 #endif
 
 #define PDT_PROPS (0x00EF)
@@ -166,7 +171,7 @@ struct synaptics_rmi4_device_info {
  * @rmi4_io_ctrl_mutex: mutex for i2c i/o control
  * @det_work: work thread instance for expansion function detection
  * @det_workqueue: pointer to work queue for work thread instance
- * @early_suspend: instance to support early suspend power management
+ * @power_suspend: instance to support early suspend power management
  * @current_page: current page in sensor to acess
  * @button_0d_enabled: flag for 0d button support
  * @full_pm_cycle: flag for full power management cycle in early suspend stage
@@ -199,7 +204,13 @@ struct synaptics_rmi4_data {
 	struct mutex rmi4_io_ctrl_mutex;
 	struct delayed_work det_work;
 	struct workqueue_struct *det_workqueue;
+<<<<<<< HEAD
 	const char *fw_image_name;
+=======
+#ifdef CONFIG_POWERSUSPEND
+	struct power_suspend power_suspend;
+#endif
+>>>>>>> a9c70c3... migrate everything to powersuspend.
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
 	unsigned char full_pm_cycle;
