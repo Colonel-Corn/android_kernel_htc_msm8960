@@ -17,6 +17,10 @@
 #ifndef _LINUX_SYNAPTICS_I2C_RMI_H
 #define _LINUX_SYNAPTICS_I2C_RMI_H
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_SWEEP2WAKE
+#include <linux/input.h>
+#endif
+
 #define SYNAPTICS_I2C_RMI_NAME "synaptics-rmi-ts"
 #define SYNAPTICS_T1007_NAME "synaptics-t1007"
 #define SYNAPTICS_T1021_NAME "synaptics-t1021"
@@ -66,7 +70,7 @@ enum {
 	FINGER_2_REPORT = 1 << 1,
 };
 
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K) || defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K_MX)
 struct synaptics_virtual_key {
 	int index;
 	int keycode;
@@ -82,7 +86,7 @@ struct synaptics_i2c_rmi_platform_data {
 				/* (major << 8 | minor) version or above. */
 				/* If non-zero another array entry follows */
 	int (*power)(int on);	/* Only valid in first array entry */
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K) || defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K_MX)
 	int (*lpm_power)(int on);
 	struct synaptics_virtual_key *virtual_key;
 	uint8_t virtual_key_num;
@@ -109,7 +113,7 @@ struct synaptics_i2c_rmi_platform_data {
 	uint32_t snap_bottom_off; /* 0x10000 = screen height */
 	uint32_t fuzz_x; /* 0x10000 = screen width */
 	uint32_t fuzz_y; /* 0x10000 = screen height */
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K) || defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K_MX)
 	int abs_x_min;
 	int abs_x_max;
 	int abs_y_min;
@@ -117,12 +121,12 @@ struct synaptics_i2c_rmi_platform_data {
 #endif
 	int fuzz_p;
 	int fuzz_w;
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K) || defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K_MX)
 	uint32_t display_width;
 	uint32_t display_height;
 #endif
 	int8_t sensitivity_adjust;
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K) || defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K_MX)
 	uint32_t dup_threshold;
 	uint32_t margin_inactive_pixel[4];
 	uint16_t filter_level[4];
@@ -155,7 +159,7 @@ struct synaptics_i2c_rmi_platform_data {
 #endif
 };
 
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K) || defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K_MX)
 struct page_description {
 	uint8_t addr;
 	uint8_t value;
