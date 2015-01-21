@@ -15,12 +15,7 @@
 
 #include <linux/input/cy8c_cs.h>
 #include <linux/delay.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
-#endif
-#ifdef CONFIG_POWERSUSPEND
-#include <linux/powersuspend.h>
-#endif
 #include <linux/hrtimer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -40,9 +35,7 @@ struct cy8c_cs_data {
 	struct input_dev *input_dev;
 	struct workqueue_struct *cy8c_wq;
 	struct work_struct work;
-#ifdef CONFIG_POWERSUSPEND
-	struct power_suspend power_suspend;
-#endif
+	struct early_suspend early_suspend;
 	int use_irq;
 	struct hrtimer timer;
 	uint16_t version;
@@ -65,13 +58,9 @@ static int disable_key;
 static int reset_cnt; 
 
 extern int board_build_flag(void);
-#if defined(CONFIG_HAS_EARLYSUSPEND)
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void cy8c_cs_early_suspend(struct early_suspend *h);
 static void cy8c_cs_late_resume(struct early_suspend *h);
-#endif
-#if defined(CONFIG_POWERSUSPEND)
-static void cy8c_cs_early_suspend(struct power_suspend *h);
-static void cy8c_cs_late_resume(struct power_suspend *h);
 #endif
 
 int i2c_cy8c_read(struct i2c_client *client, uint8_t addr, uint8_t *data, uint8_t length)
@@ -563,6 +552,7 @@ enableirq:
 		enable_irq(cs->client->irq);
 }
 
+#if 1
 static enum hrtimer_restart cy8c_cs_timer_func(struct hrtimer *timer)
 {
 	struct cy8c_cs_data *cs;
@@ -571,7 +561,8 @@ static enum hrtimer_restart cy8c_cs_timer_func(struct hrtimer *timer)
 	queue_work(cs->cy8c_wq, &cs->work);
 	return HRTIMER_NORESTART;
 }
-
+#endif
+#if 1
 static irqreturn_t cy8c_cs_irq_handler(int irq, void *dev_id)
 {
 	struct cy8c_cs_data *cs = dev_id;
@@ -580,6 +571,7 @@ static irqreturn_t cy8c_cs_irq_handler(int irq, void *dev_id)
 	queue_work(cs->cy8c_wq, &cs->work);
 	return IRQ_HANDLED;
 }
+#endif
 
 static int cy8c_cs_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
@@ -675,16 +667,12 @@ static int cy8c_cs_probe(struct i2c_client *client,
 		}
 		INIT_DELAYED_WORK(&cs->work_raw, cy8c_rawdata_print);
 	}
-#if defined(CONFIG_HAS_EARLYSUSPEND) || defined(CONFIG_POWERSUSPEND)
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	cs->early_suspend.level   = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
-#endif
 	cs->early_suspend.suspend = cy8c_cs_early_suspend;
 	cs->early_suspend.resume  = cy8c_cs_late_resume;
-#if defined(CONFIG_POWERSUSPEND)
-	cs->power_suspend.suspend = cy8c_cs_power_suspend;
-	cs->power_suspend.resume  = cy8c_cs_power_resume;
-	register_power_suspend(&cs->power_suspend);
+	register_early_suspend(&cs->early_suspend);
 #endif
 	cy8c_touchkey_sysfs_init();
 
@@ -728,9 +716,8 @@ static int cy8c_cs_remove(struct i2c_client *client)
 	struct cy8c_cs_data *cs = i2c_get_clientdata(client);
 
 	cy8c_touchkey_sysfs_deinit();
-#ifdef CONFIG_POWERSUSPEND
-	unregister_power_suspend(&cs->power_suspend);
-#endif
+
+	unregister_early_suspend(&cs->early_suspend);
 	free_irq(client->irq, cs);
 	input_unregister_device(cs->input_dev);
 
@@ -791,22 +778,6 @@ static void cy8c_cs_late_resume(struct early_suspend *h)
 }
 #endif
 
-#ifdef CONFIG_POWERSUSPEND
-static void cy8c_cs_early_suspend(struct power_suspend *h)
-{
-	struct cy8c_cs_data *ts;
-	ts = container_of(h, struct cy8c_cs_data, power_suspend);
-	cy8c_cs_suspend(ts->client, PMSG_SUSPEND);
-}
-
-static void cy8c_cs_late_resume(struct power_suspend *h)
-{
-	struct cy8c_cs_data *ts;
-	ts = container_of(h, struct cy8c_cs_data, power_suspend);
-	cy8c_cs_resume(ts->client);
-}
-#endif
-
 static const struct i2c_device_id cy8c_cs_id[] = {
 	{ CYPRESS_CS_NAME, 0 },
 };
@@ -815,7 +786,7 @@ static struct i2c_driver cy8c_cs_driver = {
 	.probe		= cy8c_cs_probe,
 	.remove		= cy8c_cs_remove,
 	.id_table	= cy8c_cs_id,
-#ifndef CONFIG_POWERSUSPEND
+#ifndef CONFIG_HAS_EARLYSUSPEND
 	.suspend	= cy8c_cs_suspend,
 	.resume		= cy8c_cs_resume,
 #endif

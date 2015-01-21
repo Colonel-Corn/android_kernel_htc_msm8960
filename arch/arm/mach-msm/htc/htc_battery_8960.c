@@ -34,7 +34,7 @@
 #include <mach/mpp.h>
 #include <linux/android_alarm.h>
 #include <linux/suspend.h>
-#include <linux/powersuspend.h>
+#include <linux/earlysuspend.h>
 
 #include <mach/htc_gauge.h>
 #include <mach/htc_charger.h>
@@ -133,10 +133,7 @@ static int critical_alarm_level_set;
 struct wake_lock voltage_alarm_wake_lock;
 struct wake_lock batt_shutdown_wake_lock;
 
-#ifdef CONFIG_POWERSUSPEND
-static struct power_suspend power_suspend;
-#endif
-
+static struct early_suspend early_suspend;
 static int screen_state;
 static int pre_screen_state;
 #ifdef CONFIG_HTC_BATT_ALARM
@@ -2608,8 +2605,8 @@ static struct kobj_type htc_batt_ktype = {
 	.release = htc_batt_kobject_release,
 };
 
-#ifdef CONFIG_POWERSUSPEND
-static void htc_battery_power_suspend(struct power_suspend *h)
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void htc_battery_early_suspend(struct early_suspend *h)
 {
 	htc_batt_info.state |= STATE_EARLY_SUSPEND;
 	screen_state = 0;
@@ -2618,7 +2615,7 @@ static void htc_battery_power_suspend(struct power_suspend *h)
 #endif
 }
 
-static void htc_battery_late_resume(struct power_suspend *h)
+static void htc_battery_late_resume(struct early_suspend *h)
 {
 	htc_batt_info.state &= ~STATE_EARLY_SUSPEND;
 	screen_state = 1;
@@ -2908,10 +2905,11 @@ static int htc_battery_probe(struct platform_device *pdev)
 #endif
 
 
-#ifdef CONFIG_POWERSUSPEND
-	power_suspend.suspend = htc_battery_power_suspend;
-	power_suspend.resume = htc_battery_late_resume;
-	register_power_suspend(&power_suspend);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 1;
+	early_suspend.suspend = htc_battery_early_suspend;
+	early_suspend.resume = htc_battery_late_resume;
+	register_early_suspend(&early_suspend);
 #endif
 
 htc_batt_timer.time_out = BATT_TIMER_UPDATE_TIME;

@@ -335,10 +335,6 @@ struct notifier_block hdd_netdev_notifier = {
 /*---------------------------------------------------------------------------
  *   Function definitions
  *-------------------------------------------------------------------------*/
-extern int isWDresetInProgress(void);
-#ifdef CONFIG_POWERSUSPEND
-extern void register_wlan_suspend(void);
-extern void unregister_wlan_suspend(void);
 void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx);
 void hdd_register_mcast_bcast_filter(hdd_context_t *pHddCtx);
 //variable to hold the insmod parameters
@@ -5156,16 +5152,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    //netif_tx_disable(pWlanDev);
    //netif_carrier_off(pWlanDev);
 
-#ifdef CONFIG_POWERSUSPEND
-   // unregister suspend/resume callbacks
-   if(pHddCtx->cfg_ini->nEnableSuspend)
-   {
-      unregister_wlan_suspend();
-   }
-#endif
-
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-#ifdef WLAN_SOFTAP_FEATURE
    if (VOS_STA_SAP_MODE == hdd_get_conparam())
    {
       pAdapter = hdd_get_adapter(pHddCtx,
@@ -5307,7 +5293,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
    //This requires pMac access, Call this before vos_close().
-#ifdef CONFIG_POWERSUSPEND
    hdd_unregister_mcast_bcast_filter(pHddCtx);
 
    //Close the scheduler before calling vos_close to make sure no thread is 
@@ -6284,14 +6269,6 @@ int hdd_wlan_startup(struct device *dev )
       goto err_unregister_pmops;
    }
 
-#ifdef CONFIG_POWERSUSPEND
-   // Register suspend/resume callbacks
-   if(pHddCtx->cfg_ini->nEnableSuspend)
-   {
-      register_wlan_suspend();
-   }
-#endif
-
    // register net device notifier for device change notification
    ret = register_netdevice_notifier(&hdd_netdev_notifier);
 
@@ -6324,14 +6301,6 @@ int hdd_wlan_startup(struct device *dev )
    }
 #endif
 
-   //Initialize the WoWL service
-   if(!hdd_init_wowl(pHddCtx))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: hdd_init_wowl failed",__func__);
-      goto err_nl_srv;
-   }
-
-#ifdef CONFIG_POWERSUSPEND
    hdd_register_mcast_bcast_filter(pHddCtx);
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
    {

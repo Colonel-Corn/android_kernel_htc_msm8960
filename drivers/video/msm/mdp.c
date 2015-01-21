@@ -44,8 +44,8 @@
 #endif
 #include "mipi_dsi.h"
 
-#ifdef CONFIG_POWERSUSPEND
-#undef CONFIG_POWERSUSPEND
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#undef CONFIG_HAS_EARLYSUSPEND
 #endif
 
 uint32 mdp4_extn_disp;
@@ -152,7 +152,7 @@ extern int first_pixel_start_y;
 struct dentry *mdp_dir;
 #endif
 
-#if defined(CONFIG_PM) && !defined(CONFIG_POWERSUSPEND)
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 static int mdp_suspend(struct platform_device *pdev, pm_message_t state);
 #else
 #define mdp_suspend NULL
@@ -161,8 +161,8 @@ static int mdp_suspend(struct platform_device *pdev, pm_message_t state);
 struct timeval mdp_dma2_timeval;
 struct timeval mdp_ppp_timeval;
 
-#ifdef CONFIG_POWERSUSPEND
-static struct power_suspend power_suspend;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static struct early_suspend early_suspend;
 #endif
 
 static u32 mdp_irq;
@@ -2351,7 +2351,7 @@ static struct dev_pm_ops mdp_dev_pm_ops = {
 static struct platform_driver mdp_driver = {
 	.probe = mdp_probe,
 	.remove = mdp_remove,
-#ifndef CONFIG_POWERSUSPEND
+#ifndef CONFIG_HAS_EARLYSUSPEND
 	.suspend = mdp_suspend,
 	.resume = NULL,
 #endif
@@ -2428,7 +2428,7 @@ static int mdp_on(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct msm_fb_data_type *mfd;
-	//int i;
+	int i;
 	mfd = platform_get_drvdata(pdev);
 
 	pr_debug("%s:+\n", __func__);
@@ -2458,10 +2458,10 @@ static int mdp_on(struct platform_device *pdev)
 		mdp4_hw_init();
 
 		/* Initialize HistLUT to last LUT */
-		/*for (i = 0; i < MDP_HIST_LUT_SIZE; i++) {
+		for (i = 0; i < MDP_HIST_LUT_SIZE; i++) {
 			MDP_OUTP(MDP_BASE + 0x94800 + i*4, last_lut[i]);
 			MDP_OUTP(MDP_BASE + 0x94C00 + i*4, last_lut[i]);
-		}*/
+		}
 
 		mdp_lut_status_restore();
 		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
@@ -3413,7 +3413,7 @@ static void mdp_suspend_sub(void)
 }
 #endif
 
-#if defined(CONFIG_PM) && !defined(CONFIG_POWERSUSPEND)
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 static int mdp_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	if (pdev->id == 0) {
@@ -3428,8 +3428,8 @@ static int mdp_suspend(struct platform_device *pdev, pm_message_t state)
 }
 #endif
 
-#ifdef CONFIG_POWERSUSPEND
-static void mdp_power_suspend(struct power_suspend *h)
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void mdp_early_suspend(struct early_suspend *h)
 {
 	mdp_suspend_sub();
 #ifdef CONFIG_FB_MSM_DTV
@@ -3440,7 +3440,7 @@ static void mdp_power_suspend(struct power_suspend *h)
 #endif
 }
 
-static void mdp_early_resume(struct power_suspend *h)
+static void mdp_early_resume(struct early_suspend *h)
 {
 #if 0
 	mdp_footswitch_ctrl(TRUE);
@@ -3474,11 +3474,11 @@ static int mdp_remove(struct platform_device *pdev)
 
 static int mdp_register_driver(void)
 {
-#ifdef CONFIG_POWERSUSPEND
-	power_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 1;
-	power_suspend.suspend = mdp_power_suspend;
-	power_suspend.resume = mdp_early_resume;
-	register_power_suspend(&power_suspend);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 1;
+	early_suspend.suspend = mdp_early_suspend;
+	early_suspend.resume = mdp_early_resume;
+	register_early_suspend(&early_suspend);
 #endif
 
 	return platform_driver_register(&mdp_driver);
