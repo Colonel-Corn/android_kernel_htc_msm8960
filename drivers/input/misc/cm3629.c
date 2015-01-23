@@ -201,7 +201,7 @@ static int I2C_RxData_2(char *rxData, int length)
 
 		D("[PS][cm3629 warning] %s, i2c err, ISR gpio %d\n",
 				__func__, lpi->intr_pin);
-		usleep(10);
+		msleep(10);
 	}
 
 	if (loop_i >= I2C_RETRY_COUNT) {
@@ -232,7 +232,7 @@ static int I2C_TxData(uint16_t slaveAddr, uint8_t *txData, int length)
 		D("[PS][cm3629 warning] %s, i2c err, slaveAddr 0x%x, register 0x%x, value 0x%x, ISR gpio%d, record_init_fail %d\n",
 				__func__, slaveAddr, txData[0], txData[1], lpi->intr_pin, record_init_fail);
 
-		usleep(10);
+		msleep(10);
 	}
 
 	if (loop_i >= I2C_RETRY_COUNT) {
@@ -2267,7 +2267,7 @@ static ssize_t ls_fLevel_store(struct device *dev,
 	input_sync(lpi->ls_input_dev);
 	printk(KERN_INFO "[LS]set fLevel = %d\n", f_cm3629_level);
 
-	hr_msleep(1000);
+	msleep(1000);
 	f_cm3629_level = -1;
 	return count;
 }

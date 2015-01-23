@@ -50,9 +50,9 @@
 #define SYN_CALIBRATION_CONTROL
 
 #define SYN_FW_NAME "tp_SYN.img"
-#ifndef CONFIG_TOUCHSCREEN_SYNAPTICS_REMOVE_FW_TIMEOUT
+
 #define SYN_FW_TIMEOUT (30000)
-#endif
+
 static DEFINE_MUTEX(syn_fw_mutex);
 
 struct synaptics_ts_data {
@@ -555,7 +555,7 @@ static int i2c_syn_read(struct i2c_client *client, uint16_t addr, uint8_t *data,
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 		if (i2c_transfer(client->adapter, msg, 2) == 2)
 			break;
-		usleep(10);
+		hr_msleep(10);
 	}
 	mutex_unlock(&syn_mutex);
 
@@ -629,7 +629,7 @@ int i2c_rmi_read(uint16_t addr, uint8_t *data, uint16_t length)
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 		if (i2c_transfer(ts->client->adapter, msg, 2) == 2)
 			break;
-		usleep(10);
+		hr_msleep(10);
 	}
 	mutex_unlock(&syn_mutex);
 
@@ -3294,8 +3294,17 @@ static void synaptics_ts_button_func(struct synaptics_ts_data *ts)
 			input_mt_slot(ts->input_dev, 0);
 			input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, 0);
 		}
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_SWEEP2WAKE
+	   }	
+#endif
 	}
-	input_sync(ts->input_dev);
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_SWEEP2WAKE
+	if (!scr_suspended) {
+#endif
+		input_sync(ts->input_dev);
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_SWEEP2WAKE
+	}
+#endif
 }
 
 static void synaptics_ts_status_func(struct synaptics_ts_data *ts)
@@ -3766,9 +3775,7 @@ static int syn_probe_init(void *arg)
 	struct synaptics_i2c_rmi_platform_data *pdata;
 	int ret = 0;
 	uint8_t data = 0, i;
-#ifndef CONFIG_TOUCHSCREEN_SYNAPTICS_REMOVE_FW_TIMEOUT
 	uint16_t wait_time = SYN_FW_TIMEOUT;
-#endif
 
 	printk(KERN_INFO "[TP] %s: enter", __func__);
 	pdata = ts->client->dev.platform_data;
@@ -3778,13 +3785,11 @@ static int syn_probe_init(void *arg)
 		goto err_get_platform_data_fail;
 	}
 
-#ifndef CONFIG_TOUCHSCREEN_SYNAPTICS_REMOVE_FW_TIMEOUT
 	if (board_build_flag() == MFG_BUILD) {
 		wait_time = SYN_FW_TIMEOUT;
 		wait_event_interruptible_timeout(ts->syn_fw_wait, atomic_read(&ts->syn_fw_condition),
 							msecs_to_jiffies(wait_time));
 	}
-#endif
 	ts->block_touch_event = 0;
 	ts->i2c_err_handler_en = pdata->i2c_err_handler_en;
 	if (ts->i2c_err_handler_en) {
@@ -4474,7 +4479,7 @@ static int synaptics_ts_resume(struct i2c_client *client)
 #endif 
 	if (ts->power) {
 		ts->power(1);
-		usleep(100);
+		hr_msleep(100);
 #ifdef SYN_CABLE_CONTROL
 		if (ts->cable_support) {
 			if (usb_get_connect_type())
