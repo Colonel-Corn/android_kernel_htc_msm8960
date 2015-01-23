@@ -38,6 +38,10 @@
 #include <linux/wait.h>
 
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_SWEEP2WAKE
+#include <linux/cm3629.h>
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_SWEEP2WAKE
 #include <linux/pl_sensor.h>
 #include <linux/mfd/pm8xxx/vibrator.h>
 #include <linux/wakelock.h>
@@ -217,7 +221,7 @@ static void syn_handle_block_touch(struct synaptics_ts_data *ts, int enable)
 #define S2W_TIMEOUT2 60
 #define S2W_TIMEOUT3 70
 #define L2M_TIMEOUT 30
-#define DT2W_TIMEOUT_MAX 400
+#define DT2W_TIMEOUT_MAX 275
 #define DT2W_DELTA 200
 #define L2W_TIMEOUT 50
 
